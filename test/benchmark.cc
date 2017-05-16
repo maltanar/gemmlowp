@@ -280,6 +280,35 @@ void benchmark_gemm_sizes(GemmContext* context,
             << "% best: " << best_mean_latency << "s" << std::endl;
 }
 
+void benchmark_caffenet(GemmContext* context) {
+  // These are the m, n, k sizes for a typical CaffeNet.
+  // each triple is (ofm, k*k*ifm, num_spatial_output_pixels)
+  const int caffenet_gemm_sizes[] = {
+      96, 363, 3025,
+      256, 2400, 729,
+      384, 2304, 169,
+      384, 3456, 169,
+      256, 3456, 169,
+      4096, 9216, 1,
+      4096, 4096, 1,
+      1000, 4096, 1
+  };
+  assert(sizeof(caffenet_gemm_sizes) % (3 * sizeof(caffenet_gemm_sizes[0])) ==
+         0);
+  const std::size_t num_caffenet_gemms =
+      sizeof(caffenet_gemm_sizes) / (3 * sizeof(caffenet_gemm_sizes[0]));
+
+  std::vector<gemm_t> caffenet_gemms(num_caffenet_gemms);
+  for (std::size_t i = 0; i < num_caffenet_gemms; i++) {
+    caffenet_gemms[i].rows = caffenet_gemm_sizes[3 * i + 0];
+    caffenet_gemms[i].depth = caffenet_gemm_sizes[3 * i + 1];
+    caffenet_gemms[i].cols = caffenet_gemm_sizes[3 * i + 2];
+  }
+
+  const double mintime = 20.0;
+  benchmark_gemm_sizes(context, caffenet_gemms, mintime);
+}
+
 void benchmark_googlenet(GemmContext* context) {
   // These are the m, n, k sizes for a typical GoogLeNet.
   const int googlenet_gemm_sizes[] = {
@@ -343,6 +372,12 @@ void benchmark_all() {
     gemmlowp::GemmContext context;
     std::cout << "Benchmarking small model GEMMs..." << std::endl;
     gemmlowp::benchmark_small_model(&context);
+  }
+
+  {
+    gemmlowp::GemmContext context;
+    std::cout << "Benchmarking typical CaffeNet GEMMs..." << std::endl;
+    gemmlowp::benchmark_caffenet(&context);
   }
 
   {
